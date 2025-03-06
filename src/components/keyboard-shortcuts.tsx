@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Button, Highlight } from "./button";
 import { KeyboardIllustration } from "./illustrations/keyboard";
 
@@ -22,19 +22,10 @@ export const KeyboardShortcuts = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const illustrationWrapperRef = useRef<HTMLDivElement>(null);
   const activeShortcutIndex = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const scheduleTimeout = () => {
-    timeoutRef.current = setTimeout(goToNextShortcut, 2500);
-  };
-
-  useEffect(() => {
-    scheduleTimeout();
-    return () => clearTimeout(timeoutRef.current);
-  }, []);
-
-  const goToShortcut = (index: number) => {
-    clearTimeout(timeoutRef.current);
+  const goToShortcut = useCallback((index: number) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     if (!wrapperRef.current) return;
 
@@ -64,10 +55,22 @@ export const KeyboardShortcuts = () => {
 
     activeShortcutIndex.current = index;
     scheduleTimeout();
-  };
+  }, []);
 
-  const goToNextShortcut = () =>
+  const goToNextShortcut = useCallback(() => {
     goToShortcut((activeShortcutIndex.current + 1) % shortcuts.length);
+  }, [goToShortcut]);
+
+  const scheduleTimeout = useCallback(() => {
+    timeoutRef.current = setTimeout(goToNextShortcut, 2500);
+  }, [goToNextShortcut]);
+
+  useEffect(() => {
+    scheduleTimeout();
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [scheduleTimeout]);
 
   const onShortcutButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
