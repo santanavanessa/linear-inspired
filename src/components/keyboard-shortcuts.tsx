@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button, Highlight } from "./button";
 import { KeyboardIllustration } from "./illustrations/keyboard";
 
@@ -24,7 +24,15 @@ export const KeyboardShortcuts = () => {
   const activeShortcutIndex = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const goToShortcut = useCallback((index: number) => {
+  // Cria uma referência estável para a função scheduleTimeout
+  const scheduleTimeoutRef = useRef<() => void>(() => {});
+  scheduleTimeoutRef.current = () => {
+    timeoutRef.current = setTimeout(() => {
+      goToShortcut((activeShortcutIndex.current + 1) % shortcuts.length);
+    }, 2500);
+  };
+
+  const goToShortcut = (index: number) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     if (!wrapperRef.current) return;
@@ -54,23 +62,16 @@ export const KeyboardShortcuts = () => {
     keyElements.forEach((element) => element?.classList.add("active"));
 
     activeShortcutIndex.current = index;
-    scheduleTimeout();
-  }, []);
-
-  const goToNextShortcut = useCallback(() => {
-    goToShortcut((activeShortcutIndex.current + 1) % shortcuts.length);
-  }, [goToShortcut]);
-
-  const scheduleTimeout = useCallback(() => {
-    timeoutRef.current = setTimeout(goToNextShortcut, 2500);
-  }, [goToNextShortcut]);
+    // Usa a função estável sem precisar listá-la em dependências
+    scheduleTimeoutRef.current();
+  };
 
   useEffect(() => {
-    scheduleTimeout();
+    scheduleTimeoutRef.current();
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [scheduleTimeout]);
+  }, []);
 
   const onShortcutButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
